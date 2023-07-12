@@ -1,0 +1,99 @@
+<script data-main="/js/root.js" src="/js/lib/require.js"></script>
+<script type="text/javascript" src="/js/lib/iframeResizer.contentWindow.min.js"></script>
+<link rel="stylesheet" href="/css/lib/bootstrap.css">
+<link rel="stylesheet" href="/css/lib/bootstrap-theme.css">
+<link rel="stylesheet" href="/css/root.css">
+<div class="title text-center margin-top">
+    <img src="/images/logo_utn.png" class="img-responsive center-block"><br/>
+    <label for="fx">f(x)</label><input type="text" name="fx" id="fx" style="width:465px" /><br/><br/>
+    <label for="tolerance">Tolerance</label><input type="text" name="tolerance" id="tolerance" />
+    <label for="iteration">Iterations</label><input type="text" name="iteration" id="iteration" />
+    <br><br>
+</div>
+<div class="center-block content">
+    <ul class="nav nav-pills">
+        <li role="presentation" class="active border"><a href="#newton-panel" role="tab" data-toggle="pill">Newton</a></li>
+        <li role="presentation" class="border"><a href="#secant-panel" role="tab" data-toggle="pill">Secant</a></li>
+        <li role="presentation" class="border"><a href="#bisection-panel" role="tab" data-toggle="pill">Bisection</a></li>
+        <li role="presentation" class="border"><a href="#false-position-panel" role="tab" data-toggle="pill">False Position</a></li>
+        <li role="presentation" class="border"><a href="#hybrid-panel" role="tab" data-toggle="pill">Hybrid</a></li>
+    </ul>
+    <div class="tab-content border margin-top">
+        <div role="tabpanel" class="tab-pane active" id="newton-panel">
+            <div class="row">
+                <div class="col-md-5">
+                    <label for="newton-x">x(0)</label><input type="text" name="newton-x" id="newton-x" />
+                    <input type="button" id="newton-calculate" value="Calculate"/>&nbsp;<a style="display:none" id="newton-zoom-out" href="javascript:zoomOut('#newton-plot')" title="zoom out"><span class="glyphicon glyphicon-zoom-out"></span></a>
+                    <div id="newton-result"></div>
+                </div>
+                <div class="col-md-7">
+                    <div id="newton-plot"></div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="secant-panel">
+            <div class="row">
+                <div class="col-md-5">
+                    <label for="secant-x">x(0)</label><input type="text" name="secant-x0" id="secant-x0" />
+                    <input type="button" id="secant-calculate" value="Calculate"/>&nbsp;<a style="display:none" id="secant-zoom-out" href="javascript:zoomOut('#secant-plot')" title="zoom out"><span class="glyphicon glyphicon-zoom-out"></span></a><br>
+                    <label for="secant-x">x(1)</label><input type="text" name="secant-x1" id="secant-x1" />
+                    <div id="secant-result"></div>
+                </div>
+                <div class="col-md-7">
+                    <div id="secant-plot"></div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="bisection-panel">
+            <div class="row">
+                <div class="col-md-5">
+                    [<input type="text" name="bisection-a" id="bisection-a" />;<input type="text" name="bisection-b" id="bisection-b" />]
+                    <input type="button" id="bisection-calculate" value="Calculate"/>&nbsp;<a style="display:none" id="bisection-zoom-out" href="javascript:zoomOut('#bisection-plot')" title="zoom out"><span class="glyphicon glyphicon-zoom-out"></span></a>
+                    <div id="bisection-result"></div>
+                </div>
+                <div class="col-md-7">
+                    <div id="bisection-plot"></div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="false-position-panel">
+            <div class="row">
+                <div class="col-md-5">
+                    [<input type="text" name="false-position-a" id="false-position-a" />;<input type="text" name="false-position-b" id="false-position-b" />]
+                    <input type="button" id="false-position-calculate" value="Calculate"/>&nbsp;<a style="display:none" id="false-position-zoom-out" href="javascript:zoomOut('#false-position-plot')" title="zoom out"><span class="glyphicon glyphicon-zoom-out"></span></a>
+                    <div id="false-position-result"></div>
+                </div>
+                <div class="col-md-7">
+                    <div id="false-position-plot"></div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="hybrid-panel">
+            <div class="row">
+                <div class="col-md-5">
+                    <select name="algorithm" id="algorithm">
+                        <!--<option value="secant">Secant</option>-->
+                        <option value="bisection">Bisection</option>
+                        <option value="falsePosition">False Position</option>
+                    </select>
+                    <span>+ Newton</span><br/><br/>
+                    [<input type="text" name="hybrid-a" id="hybrid-a" />;<input type="text" name="hybrid-b" id="hybrid-b" />]
+                    <input type="button" id="hybrid-calculate" value="Calculate"/>&nbsp;<a style="display:none" id="hybrid-zoom-out" href="javascript:zoomOut('#hybrid-plot')" title="zoom out"><span class="glyphicon glyphicon-zoom-out"></span></a>
+                    <div id="hybrid-result"></div>
+                </div>
+                <div class="col-md-7">
+                    <div id="hybrid-plot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <ul class="border margin-top">
+        <li class="tip"><span class="glyphicon glyphicon-ok-circle">&nbsp;</span>Reach the desire approximation on the graph with <span class="glyphicon glyphicon-zoom-in"></span> icon.</li>
+        <li class="tip"><span class="glyphicon glyphicon-ok-circle">&nbsp;</span>Go back to full view on the graph with <span class="glyphicon glyphicon-zoom-out"></span> icon.</li>
+        <li class="tip"><span class="glyphicon glyphicon-ok-circle">&nbsp;</span>Zoom in and out are supported on the graph using scroll.</li>
+        <li class="tip"><span class="glyphicon glyphicon-ok-circle">&nbsp;</span>Placing the cursor on the desire graph approximation shows rounded values for x and y.</li>
+        <li class="link"><span class="glyphicon glyphicon-signal">&nbsp;</span><a href="http://mathjs.org/docs/reference/functions.html" target="_blank">List of supported functions.</a></li>
+        <li class="link"><span class="glyphicon glyphicon-signal">&nbsp;</span><a href="http://mathjs.org/docs/reference/constants.html" target="_blank">List of supported constants.</a></li>
+    </ul>
+</div>
+<br/>

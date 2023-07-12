@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="solr, logstash">
+
+    <title>Feeding SOLR with its own logs</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.png">
+    <meta name="description" content="Feeding SOLR with its own logs">
+
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="canonical" href="https://jmusacchio.github.io/blog/2016/solr-logs-logstash/">
+    <link rel="alternate" type="application/rss+xml" title="Juan Manuel Musacchio" href="https://jmusacchio.github.io/feed.xml" />
+    <link rel="author" href="https://linkedin.com/in/jmusacchio"/>
+
+    <script type="text/javascript" src="/js/lib/iframeResizer.min.js"></script>
+  </head>
+
+  <body>
+    <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-82658216-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+    <main>
+      <header class="site-header">
+  <div class="container">
+    <h1><a href="/">Home</a></h1>
+
+    <button type="button" class="sliding-panel-button">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="navbar sliding-panel-content">
+      <ul>
+        
+          <li><a href="/about" title="About">About</a></li>
+        
+          <li><a href="/blog" title="Blog">Blog</a></li>
+        
+        <li><a href="/feed.xml" target="_blank"><i class="icon icon-feed"></i></a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<div class="sliding-panel-fade-screen"></div>
+
+
+      <div class="container">
+        <article role="article" class="post">
+
+  <div class="card">
+    <header class="post-header">
+      <h1 class="post-title">Feeding SOLR with its own logs</h1>
+      <p class="post-meta">Sep 15, 2016</p>
+    </header>
+
+    <div class="post-content">
+      <h1>Feeding SOLR with its own logs</h1>
+
+<p>One of the latest projects I worked on was an apartment listing website. The main search engine used to query for properties on different cities was <strong><a href="http://lucene.apache.org/solr/" target="_blank">SOLR</a></strong> and the product owner requested to build some type of analytic tool to dissect user searches, get top searched cities, etc.
+So my first reaction was to somehow read SOLR logs that prints the queries, parse each line in a proper way and then store it on a new SOLR collection. Implementing the previous sentence from the scratch would required at least a few days of work. After some investigation I found out a nice integration software called <strong><a href="https://github.com/lucidworks/solrlogmanager" target="_blank">Solr Log Manager</a></strong>.
+Basically is a bridge between <strong><a href="https://www.elastic.co/products/logstash" target="_blank">Logstash</a></strong> and <strong>SOLR</strong>.</p>
+
+<p><strong>Logstash</strong> is a data pipeline that helps you process logs and other event data from a variety of systems, allows you to manage events and logs, so you can use it to collect, parse and store logs for later use. 
+To setup <strong>Solr Log Manager</strong> reading the <em><a href="https://github.com/lucidworks/solrlogmanager/blob/master/README.md" target="_blank">Readme.md</a></em> file is pretty straight forward and simple to follow, besides you will find <em><a href="https://github.com/lucidworks/solrlogmanager/blob/master/MANUAL.md" target="_blank">Manual.md</a></em> with extra information.</p>
+
+<h2>Configuring lw_solr.conf file</h2>
+
+<p>After you setup <strong>Solr Log Manager</strong> you will have to customize <code>lw_solr.conf</code> file to fit your needs. Below will show the one that I used on the project and will describe the important parts. Many of them are intuitive, you can read the official <strong><a href="https://www.elastic.co/guide/en/logstash/current/index.html" target="_blank">Logstash documentation</a></strong> to get more information.</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="c1"># Input logs</span>
+<span class="n">input</span> <span class="p">{</span>
+  <span class="n">file</span> <span class="p">{</span>
+    <span class="n">type</span> <span class="o">=&gt;</span> <span class="s2">"solrlog"</span>
+    <span class="n">path</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"/opt/solr/logs/*"</span> <span class="p">]</span>
+    <span class="n">exclude</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="s2">"*.gz"</span><span class="p">,</span><span class="s2">"*.zip"</span><span class="p">,</span><span class="s2">"*.tgz"</span><span class="p">]</span>
+    <span class="n">sincedb_path</span> <span class="o">=&gt;</span> <span class="s2">"/dev/null"</span>
+    <span class="n">start_position</span> <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1"># Add name=value pairs as fields</span>
+<span class="n">filter</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">[</span><span class="n">type</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"solrlog"</span> <span class="p">{</span>
+    <span class="n">grok</span> <span class="p">{</span>
+      <span class="n">patterns_dir</span> <span class="o">=&gt;</span> <span class="s2">"./patterns"</span>
+      <span class="n">match</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="s2">"message"</span><span class="p">,</span> <span class="s2">"INFO %{DATA} %{TIMESTAMP_ISO8601:received_at}; %{DATA}; </span><span class="se">\[</span><span class="s2">%{DATA:collection}</span><span class="se">\]</span><span class="s2"> webapp=%{DATA:webapp} path=%{DATA:search_handler} params={%{DATA}%{SORT:sort}%{DATA}%{QUERY_TERMS:query_terms}%{DATA}%{FILTER_QUERY_TERMS:filter_query_terms}%{DATA}} hits=%{BASE10NUM:hits} status=%{BASE10NUM:status} QTime=%{BASE10NUM:qtime}"</span><span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="s2">"_grokparsefailure"</span> <span class="k">in</span> <span class="p">[</span><span class="n">tags</span><span class="p">])</span> <span class="p">{</span>
+      <span class="n">drop</span><span class="p">{}</span>
+    <span class="p">}</span>
+    <span class="n">date</span> <span class="p">{</span>
+      <span class="c1"># Try to pull the time stamp from the 'received_at' field (parsed above with grok)</span>
+      <span class="n">match</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"received_at"</span><span class="p">,</span> <span class="s2">"yyyy-MM-dd HH:mm:ss.SSS"</span> <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="n">mutate</span> <span class="p">{</span>
+      <span class="c1"># Remove unwanted characters and normalize data</span>
+      <span class="nb">gsub</span> <span class="o">=&gt;</span> <span class="p">[</span> 
+        <span class="s2">"query_terms"</span><span class="p">,</span> <span class="s2">"q="</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"query_terms"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\+</span><span class="s2">"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">,</span>
+        <span class="s2">"sort"</span><span class="p">,</span> <span class="s2">"sort="</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"sort"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\+</span><span class="s2">"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">,</span>
+        <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">"fq="</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">"&amp;"</span><span class="p">,</span> <span class="s2">" AND "</span><span class="p">,</span>
+        <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">" AND $"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\+</span><span class="s2">"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">,</span>
+        <span class="s2">"received_at"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">,</span> <span class="s2">"T"</span><span class="p">,</span>
+        <span class="s2">"received_at"</span><span class="p">,</span> <span class="s2">"(</span><span class="se">\d</span><span class="s2">$)"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\0</span><span class="s2">Z"</span>
+      <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="n">urldecode</span> <span class="p">{</span>
+      <span class="c1"># avoid url encoding</span>
+      <span class="n">all_fields</span> <span class="o">=&gt;</span> <span class="kp">true</span>
+    <span class="p">}</span>
+    <span class="n">mutate</span> <span class="p">{</span>
+      <span class="c1"># separate city and state</span>
+      <span class="n">add_field</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"city"</span><span class="p">,</span> <span class="s2">"%{query_terms}"</span><span class="p">,</span> <span class="s2">"state"</span><span class="p">,</span> <span class="s2">"%{query_terms}"</span> <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="n">mutate</span> <span class="p">{</span>
+      <span class="nb">gsub</span> <span class="o">=&gt;</span> <span class="p">[</span>
+        <span class="s2">"city"</span><span class="p">,</span> <span class="s2">"PropertyCity:"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"city"</span><span class="p">,</span> <span class="s2">"PropertyPostalCode:"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"city"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\*</span><span class="s2">"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"city"</span><span class="p">,</span> <span class="s2">" AND .+"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"state"</span><span class="p">,</span> <span class="s2">"PropertyStateCode:"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"state"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\*</span><span class="s2">"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span>
+        <span class="s2">"state"</span><span class="p">,</span> <span class="s2">".+ AND "</span><span class="p">,</span> <span class="s2">""</span>
+      <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="n">grep</span> <span class="p">{</span>
+      <span class="n">drop</span> <span class="o">=&gt;</span> <span class="kp">false</span>
+      <span class="n">match</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">".+geofilt"</span> <span class="p">]</span>
+      <span class="n">add_field</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"radius_search"</span><span class="p">,</span> <span class="s2">"true"</span> <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="n">grep</span> <span class="p">{</span>
+      <span class="n">drop</span> <span class="o">=&gt;</span> <span class="kp">false</span>
+      <span class="n">negate</span> <span class="o">=&gt;</span> <span class="kp">true</span>
+      <span class="n">match</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"filter_query_terms"</span><span class="p">,</span> <span class="s2">".+geofilt"</span> <span class="p">]</span>
+      <span class="n">add_field</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="s2">"radius_search"</span><span class="p">,</span> <span class="s2">"false"</span> <span class="p">]</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1"># Output solr</span>
+<span class="n">output</span> <span class="p">{</span>
+  <span class="n">stdout</span> <span class="p">{</span> <span class="n">debug</span> <span class="o">=&gt;</span> <span class="kp">true</span> <span class="n">codec</span> <span class="o">=&gt;</span> <span class="s2">"rubydebug"</span><span class="p">}</span>
+  <span class="n">lucidworks_solr_lsv133</span> <span class="p">{</span> <span class="n">collection_host</span> <span class="o">=&gt;</span> <span class="s2">"localhost"</span> <span class="n">collection_port</span> <span class="o">=&gt;</span> <span class="s2">"8983"</span> <span class="n">collection_name</span> <span class="o">=&gt;</span> <span class="s2">"analytic"</span> <span class="n">field_prefix</span> <span class="o">=&gt;</span> <span class="s2">"event_"</span> <span class="n">force_commit</span> <span class="o">=&gt;</span> <span class="kp">false</span> <span class="n">flush_size</span> <span class="o">=&gt;</span> <span class="mi">1000</span> <span class="n">idle_flush_time</span> <span class="o">=&gt;</span> <span class="mi">1</span> <span class="p">}</span>
+<span class="p">}</span></code></pre></figure>
+
+<p><code>type =&gt; "solrlog"</code> specifies the log type that will be later referenced on the filter section.</p>
+
+<p><code>path =&gt; [ "/opt/solr/logs/*" ]</code> location of solr logs.</p>
+
+<p><code>patterns_dir =&gt; "./patterns"</code> directory where I defined some useful custom patterns to be used on <strong>match</strong> section.</p>
+
+<p><code>match =&gt; ["message", "INFO %{DATA} %{TIMESTAMP_ISO8601:received_at}; %{DATA}; \[%{DATA:collection}\] webapp=%{DATA:webapp} path=%{DATA:search_handler} params={%{DATA}%{SORT:sort}%{DATA}%{QUERY_TERMS:query_terms}%{DATA}%{FILTER_QUERY_TERMS:filter_query_terms}%{DATA}} hits=%{BASE10NUM:hits} status=%{BASE10NUM:status} QTime=%{BASE10NUM:qtime}"]</code>
+is a regular expression that matches and encapsulate each log line section in its own field (defined after <strong>colon</strong> character).</p>
+
+<p>For example, <code>webapp=%{DATA:webapp}</code> specifies that everything after <code>webapp=</code> and before <code>path=</code> characters should be matched against gork <strong>DATA</strong> pattern and will be stored in <strong>received_at</strong> field if so.</p>
+
+<p>Here is a <strong><a href="https://github.com/elastic/logstash/blob/v1.4.2/patterns/grok-patterns" target="_blank">list</a></strong> of grok built in patterns.</p>
+
+<p>Below there are some custom patterns that I defined and placed it on a file inside <strong>./patterns</strong> directory</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="no">QUERY_TERMS</span> <span class="n">q</span><span class="o">=</span><span class="p">[</span><span class="o">^&amp;</span><span class="p">]</span><span class="o">+</span>
+<span class="no">FILTER_QUERY_TERMS</span> <span class="p">(?:</span><span class="n">fq</span><span class="o">=</span><span class="p">.</span><span class="nf">+</span><span class="o">&amp;</span><span class="p">)</span><span class="o">+</span>
+<span class="no">SORT</span> <span class="n">sort</span><span class="o">=</span><span class="p">[</span><span class="o">^&amp;</span><span class="p">]</span><span class="o">+</span></code></pre></figure>
+
+<p>Filters are applied in sequence from top to bottom, <code>mutate.gsub</code> is useful to remove unwanted characters and normalize data after matching. As you can see the already matched fields (that stores each portion of the log line) are referred on gsub.</p>
+
+<p><code>mutate.add_field</code> is used to add extra fields, in this case <strong>city</strong> and <strong>state</strong>, both will be filled with <strong>query_terms</strong> field data. I performed this trick to separate city and state info and keep query_terms field intact. Then I applied some transformations to get city and state clean data.</p>
+
+<p><code>lucidworks_solr_lsv133</code> contains the info to reach solr instance and collection that will be fed.</p>
+
+<p>Here is a solr log line example which will match above configuration:</p>
+
+<figure class="highlight"><pre><code class="language-shell" data-lang="shell">INFO  - 2015-06-30 14:23:49.683<span class="p">;</span> org.apache.solr.core.SolrCore<span class="p">;</span> <span class="o">[</span>collection1] <span class="nv">webapp</span><span class="o">=</span>/solr <span class="nv">path</span><span class="o">=</span>/select <span class="nv">params</span><span class="o">={</span>group.ngroups<span class="o">=</span><span class="nb">true</span>&amp;sort<span class="o">=</span>PropertyIsDisplayed+desc,+PropertySearchSortOrderKey+asc,PropertySearchListingRank+desc&amp;fl<span class="o">=</span>PropertyKey,+PropertyName,+PropertyAddress1,+PropertyCity,+PropertyStateCode,+PropertyPostalCode,+PropertyExternalUrl,+PropertyMinRent,+PropertyMaxRent,+PropertyMinBed,+PropertyMaxBed,PropertyMinBath,+PropertyMaxBath,+PropertyId,+PropertyStructureTypeId,+PropertyLatitude,+PropertyLongitude,+PropertyRevenueModelId,+PropertyMediaIds,+PropertyPostalCode,+PropertyDirectContactPhone,+PropertyMobileSiteNumber,+PropertySemTrackingNumber,+PropertyWalkScore,+PropertyTransitScore,+PropertyShortDescription,+PropertyFullDescription,+PropertyBrandName,+PropertyFloorplanImageTagIds,+PropertyIsDisplayed&amp;start<span class="o">=</span>0&amp;q<span class="o">=</span>PropertyCity:<span class="s2">"san+francisco"</span>+AND+PropertyStateCode:CA<span class="k">*</span>&amp;group.field<span class="o">=</span>PropertyKey&amp;group<span class="o">=</span><span class="nb">true</span>&amp;wt<span class="o">=</span>standard&amp;fq<span class="o">=</span>Bathrooms:[1+TO+<span class="k">*</span><span class="o">]</span>&amp;fq<span class="o">=</span>Bedrooms:[0+TO+<span class="k">*</span><span class="o">]</span>&amp;fq<span class="o">=</span>FloorPlanMaxRent:[0+TO+<span class="k">*</span><span class="o">]</span>&amp;fq<span class="o">=</span>FloorPlanMinRent:[0+TO+<span class="k">*</span><span class="o">]</span>&amp;fq<span class="o">=</span>PropertyStructureTypeId:<span class="o">(</span>33+OR+34+OR+35+OR+36+OR+37+OR+38+OR+41<span class="o">)</span>+AND+PropertyMediaIds:[<span class="s1">''</span>+TO+<span class="k">*</span><span class="o">]</span>+AND+PropertyRevenueModelId:<span class="k">*</span>+AND+!PropertySearchSortOrderKey:500&amp;rows<span class="o">=</span>20<span class="o">}</span> <span class="nv">hits</span><span class="o">=</span>2049 <span class="nv">status</span><span class="o">=</span>0 <span class="nv">QTime</span><span class="o">=</span>2631 </code></pre></figure>
+
+
+    </div>
+
+    <ul class="social">
+    <li><div class="fb-share-button" data-href="https://jmusacchio.github.io/blog/2016/solr-logs-logstash/" data-layout="button_count" data-mobile-iframe="true" style="position: relative; top: -6px;"><a class="fb-xfbml-parse-ignore" target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https://jmusacchio.github.io/blog/2016/solr-logs-logstash/&amp;src=sdkpreparse">Share</a></div></li>
+    <li><a href="https://twitter.com/share" class="twitter-share-button" data-show-count="true">Tweet</a></li>
+    <li><script type="IN/Share" data-counter="right"></script></li>
+    <li><div class="g-plus" data-action="share" style="width:300px"></div></li>
+</ul>
+
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script src="https://apis.google.com/js/platform.js" async defer></script>
+<script src="//platform.linkedin.com/in.js"></script>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v2.7";
+    fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+    
+<hr>
+
+<aside id="comments" class="disqus">
+  <div class="container">
+    <h3><i class="icon icon-comments-o"></i> Comments</h3>
+    <div id="disqus_thread"></div>
+    <script>
+      var disqus_config = function() {
+        this.page.url = 'https://jmusacchio.github.io';
+        this.page.identifier = '/blog/2016/solr-logs-logstash';
+      };
+      (function() {
+        var d = document,
+        s = d.createElement('script');
+        s.src = '//jmusacchio.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+      })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+  </div>
+</aside>
+
+  </div>
+
+</article>
+
+      </div>
+
+      <footer class="site-footer">
+  <div class="container">
+    <ul class="social">
+  <li><a href="mailto:juan.musacchio@gmail.com"><i class="icon icon-email"></i></a></li>
+  <li><a href="https://github.com/jmusacchio" target="_blank"><i class="icon icon-github"></i></a></li>
+  <!--<li><a href="" target="_blank"><i class="icon icon-twitter"></i></a></li>-->
+  <!--<li><a href="" target="_blank"><i class="icon icon-facebook"></i></a></li>-->
+  <li><a href="https://linkedin.com/in/jmusacchio" target="_blank"><i class="icon icon-linkedin"></i></a></li>
+</ul>
+    <p class="txt-medium-gray">
+      <small>&copy;2023 All rights reserved. Made with <a href="http://jekyllrb.com/" target="_blank">Jekyll</a> and ♥</small>
+    </p>
+  </div>
+</footer>
+
+
+      <a href="https://github.com/jmusacchio" target="_blank" class="github-corner"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#337ab7; color:#fff; position: absolute; top: 0; border: 0; right: 0;"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+      <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+      <script>
+      $(document).ready(function() {
+        $('.sliding-panel-button,.sliding-panel-fade-screen,.sliding-panel-close').on('click touchstart',function (e) {
+          $('.sliding-panel-content,.sliding-panel-fade-screen').toggleClass('is-visible');
+          e.preventDefault();
+        });
+      });
+      </script>
+    </main>
+  </body>
+</html>

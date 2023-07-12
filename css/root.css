@@ -1,0 +1,89 @@
+.container {
+  max-width : 60%;
+}
+
+.content {
+  width: 100%;
+}
+
+.tab-pane {
+  padding: 10px;
+}
+
+.border {
+  border: 2px solid #337ab7;
+  border-radius: 6px;
+}
+
+.margin-top {
+  margin-top: 10px;
+}
+
+input[type=text] {
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+input[readonly] {
+  background-color: #f2f2f2;
+}
+
+.axis text, .annotations text, .tip text, .top-right-legend {
+  font-size: 1.3em;
+}
+
+.annotations path {
+  stroke: rgb(255,165,0);
+}
+
+.graph circle {
+  opacity: 1;
+  r: 1.5;
+  fill: rgb(255, 0, 0);
+}
+
+.tab-pane input[type=text] {
+  width:30px;
+  text-align: center;
+}
+
+input[type=text] {
+  border: 1px solid grey;
+  border-radius: 6px;
+}
+
+input[type=text]:focus {
+  border: 1px solid #337ab7;
+  box-shadow: 0px 0px 2px #337ab7;
+  border-radius: 6px;
+  outline:none;
+}
+
+li {
+  list-style-type: none;
+  font-weight: bold;
+}
+
+li.tip {
+  color: black;
+}
+
+li.link {
+  color: #337ab7;
+}
+
+li.author {
+  color: orange;
+}
+
+.diverged, .error {
+  color: red;
+}
+
+.converged {
+  color: green;
+}
+
+.warning {
+  color: orange;
+}
